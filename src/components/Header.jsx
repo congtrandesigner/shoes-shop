@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { FiSearch, FiShoppingCart } from 'react-icons/fi';
 import { logout } from '../redux/reducers/userReducer';
 import { TOKEN, USER_LOGIN } from '../api/http';
+import logo from '../assets/log-cybersoft.png';
+
 
 const categories = [
   { id: 'MEN', label: 'Men' },
@@ -33,7 +35,10 @@ export default function Header() {
   return (
     <header>
       <div className="header">
-        <NavLink to="/" className="logo">SHOES SHOP</NavLink>
+              <NavLink to="/" className="logo">
+                <img src={logo} alt="Cybersoft" />
+            </NavLink>
+
 
         <div className="header-right">
           <NavLink to="/search" className="header-icon">

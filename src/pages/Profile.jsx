@@ -1,15 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useDispatch, useSelector } from 'react-redux';
-import { getProfileApi, updateProfileApi } from '../redux/reducers/userReducer';
+import { getProfileApi, updateProfileApi, getFavoriteApi } from '../redux/reducers/userReducer';
+import { ORDER_QUANTITIES } from '../redux/reducers/cartReducer';
+
+const formatDate = (dateString) => {
+  const d = new Date(dateString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)} - ${pad(d.getDate())} - ${d.getFullYear()}`;
+};
+
+const getSavedQuantities = () => JSON.parse(localStorage.getItem(ORDER_QUANTITIES) || '{}');
 
 export default function Profile() {
   const dispatch = useDispatch();
-  const { userProfile } = useSelector((state) => state.userReducer);
+  const { userProfile, favorites } = useSelector((state) => state.userReducer);
+  const [activeTab, setActiveTab] = useState('history');
 
   useEffect(() => {
     dispatch(getProfileApi());
+    dispatch(getFavoriteApi());
   }, [dispatch]);
 
   const formik = useFormik({
@@ -49,6 +60,7 @@ export default function Profile() {
   if (!userProfile) return <p>Đang tải...</p>;
 
   const ordersHistory = [...(userProfile.ordersHistory || [])].reverse();
+  const savedQuantities = getSavedQuantities();
 
   return (
     <div className="form-page">
@@ -109,37 +121,87 @@ export default function Profile() {
         </form>
       </div>
 
-      <h2 className="form-title history-title">Order history</h2>
+      <div className="profile-tabs">
+        <button
+          className={activeTab === 'history' ? 'active' : ''}
+          onClick={() => setActiveTab('history')}
+        >
+          Order history
+        </button>
+        <button
+          className={activeTab === 'favourite' ? 'active' : ''}
+          onClick={() => setActiveTab('favourite')}
+        >
+          Favourite
+        </button>
+      </div>
 
-      {ordersHistory.length === 0 && <p>Chưa có đơn hàng nào.</p>}
+      {activeTab === 'history' && (
+        <>
+          {ordersHistory.length === 0 && <p>Chưa có đơn hàng nào.</p>}
 
-      {ordersHistory.map((order) => (
-        <div key={order.id} className="order">
-          <p className="order-date">
-                                   + Orders have been placed on {new Date(order.date).toLocaleDateString('vi-VN')}
-          </p>
+          {ordersHistory.map((order) => (
+            <div key={order.id} className="order">
+              <p className="order-date">+ Orders have been placed on {formatDate(order.date)}</p>
 
-                    <table className="cart-table">
-                        <thead>
-                        <tr>
-                            <th>Image</th>
-                            <th>Name</th>
-                            <th>Price</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {order.orderDetail?.map((item, index) => (
-                            <tr key={index}>
-                            <td><img src={item.image} alt={item.name} /></td>
-                            <td>{item.name}</td>
-                            <td>{item.price}$</td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
+              <table className="cart-table">
+                <thead>
+                  <tr>
+                    <th>id</th>
+                    <th>img</th>
+                    <th>name</th>
+                    <th>price</th>
+                    <th>quantity</th>
+                    <th>total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.orderDetail?.map((item, index) => {
+                    const quantity = savedQuantities[order.id]?.[index];
+                    return (
+                      <tr key={index}>
+                        <td>{order.id}</td>
+                        <td><img src={item.image} alt={item.name} /></td>
+                        <td>{item.name}</td>
+                        <td>{item.price}</td>
+                        <td><span className="qty-box">{quantity ?? '-'}</span></td>
+                        <td>{quantity ? item.price * quantity : '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </>
+      )}
 
-        </div>
-      ))}
+      {activeTab === 'favourite' && (
+        <>
+          {favorites.length === 0 ? (
+            <p>Chưa có sản phẩm yêu thích.</p>
+          ) : (
+            <table className="cart-table">
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>img</th>
+                  <th>name</th>
+                </tr>
+              </thead>
+              <tbody>
+                {favorites.map((prod) => (
+                  <tr key={prod.id}>
+                    <td>{prod.id}</td>
+                    <td><img src={prod.image} alt={prod.name} /></td>
+                    <td>{prod.name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
     </div>
   );
 }

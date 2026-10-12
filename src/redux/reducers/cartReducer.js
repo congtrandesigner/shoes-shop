@@ -1,11 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import _ from 'lodash';
 import { http } from '../../api/http';
 
 export const CARTS = 'carts';
+export const ORDER_QUANTITIES = 'orderQuantities';
 
 const getCartFromStorage = () => {
   const data = localStorage.getItem(CARTS);
   return data ? JSON.parse(data) : [];
+};
+
+const saveOrderQuantities = (orderId, quantities) => {
+  const saved = JSON.parse(localStorage.getItem(ORDER_QUANTITIES) || '{}');
+  saved[orderId] = quantities;
+  localStorage.setItem(ORDER_QUANTITIES, JSON.stringify(saved));
 };
 
 export const orderApi = createAsyncThunk(
@@ -13,6 +21,14 @@ export const orderApi = createAsyncThunk(
   async (order, { rejectWithValue }) => {
     try {
       const res = await http.post('/Users/order', order);
+      const profile = await http.post('/Users/getProfile');
+      const newestOrder = _.maxBy(profile.data.content.ordersHistory, 'id');
+      if (newestOrder) {
+        saveOrderQuantities(
+          newestOrder.id,
+          order.orderDetail.map((item) => item.quantity)
+        );
+      }
       return res.data.content;
     } catch (err) {
       return rejectWithValue(err.response?.data);

@@ -6,6 +6,11 @@ const getUserFromStorage = () => {
   return data ? JSON.parse(data) : null;
 };
 
+const saveLogin = (content) => {
+  localStorage.setItem(TOKEN, content.accessToken);
+  localStorage.setItem(USER_LOGIN, JSON.stringify(content));
+};
+
 export const registerApi = createAsyncThunk(
   'user/register',
   async (userRegister, { rejectWithValue }) => {
@@ -23,12 +28,21 @@ export const loginApi = createAsyncThunk(
   async (userLogin, { rejectWithValue }) => {
     try {
       const res = await http.post('/Users/signin', userLogin);
-      const content = res.data.content;
+      saveLogin(res.data.content);
+      return res.data.content;
+    } catch (err) {
+      return rejectWithValue(err.response?.data);
+    }
+  }
+);
 
-      localStorage.setItem(TOKEN, content.accessToken);
-      localStorage.setItem(USER_LOGIN, JSON.stringify(content));
-
-      return content;
+export const loginFacebookApi = createAsyncThunk(
+  'user/loginFacebook',
+  async (facebookToken, { rejectWithValue }) => {
+    try {
+      const res = await http.post('/Users/facebooklogin', { facebookToken });
+      saveLogin(res.data.content);
+      return res.data.content;
     } catch (err) {
       return rejectWithValue(err.response?.data);
     }
@@ -60,16 +74,30 @@ export const updateProfileApi = createAsyncThunk(
   }
 );
 
+export const getFavoriteApi = createAsyncThunk(
+  'user/getFavorite',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await http.get('/Users/getproductfavorite');
+      return res.data.content?.productsFavorite || [];
+    } catch (err) {
+      return rejectWithValue(err.response?.data);
+    }
+  }
+);
+
 const userSlice = createSlice({
   name: 'user',
   initialState: {
     userLogin: getUserFromStorage(),
     userProfile: null,
+    favorites: [],
   },
   reducers: {
     logout: (state) => {
       state.userLogin = null;
       state.userProfile = null;
+      state.favorites = [];
     },
   },
   extraReducers: (builder) => {
@@ -77,8 +105,14 @@ const userSlice = createSlice({
       .addCase(loginApi.fulfilled, (state, action) => {
         state.userLogin = action.payload;
       })
+      .addCase(loginFacebookApi.fulfilled, (state, action) => {
+        state.userLogin = action.payload;
+      })
       .addCase(getProfileApi.fulfilled, (state, action) => {
         state.userProfile = action.payload;
+      })
+      .addCase(getFavoriteApi.fulfilled, (state, action) => {
+        state.favorites = action.payload;
       });
   },
 });
